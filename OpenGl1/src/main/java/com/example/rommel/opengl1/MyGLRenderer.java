@@ -4,6 +4,7 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.SystemClock;
+import android.util.Log;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -66,7 +67,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         mbug3 = new Bug();
 
         mbug1.setColor(1.0f, 0.2f, 0.2f, 1.0f);
-        mbug1.spawn(0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+        mbug1.spawn(1.0f, 10.0f, 1.0f, 0.0f, 1.0f);
 
         mbug2.setColor(0.2f, 1.0f, 0.2f, 1.0f);
         mbug2.spawn(500.0f, -0.0f, 0.0f, 10.0f, 0.5f);
@@ -97,7 +98,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
         float ratio = (float) width / height;
         //Matrix.frustumM(mProjectionMatrix, 0, width, height, -1, 1, 1, 1000);
-        Matrix.orthoM(mProjectionMatrix, 0, -(width>>1), width>>1, -(height>>1), height>>1, 0, 1000.0f);
+        Matrix.orthoM(mProjectionMatrix, 0, 0, width, 0, height, 0, 1000.0f);
     }
 
     public static int loadShader(int type, String shaderCode){
@@ -120,14 +121,31 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         this.mTouchX = x;
         this.mTouchY = y;
         float[] position;
-        float[] bug1Matrix = mbug1.getMatrix();
+        float[] normPosition = new float[4];
+        float[] modelMatrix = mbug1.getMatrix();
+        float[] modelMatrixI = new float[16];
+        float[] projectionMatrixI = new float[16];
+        Matrix.invertM(modelMatrixI, 0, modelMatrix, 0);
+        Matrix.invertM(projectionMatrixI, 0, mMVPMatrix, 0);
+
+        float[] mvpMatrix = new float[16];
+        float[] mvpMatrixI = new float[16];
+
+        Matrix.multiplyMM(mvpMatrix, 0, modelMatrix, 0, mMVPMatrix, 0);
+        Matrix.invertM(mvpMatrixI, 0, mvpMatrix, 0);
 
         position = mbug1.getPosition();
+        //Matrix.transposeM(position, 0, position, 0);
 
+        Matrix.multiplyMV(normPosition, 0, mvpMatrixI, 0, position, 0);
+        for(int i = 0; i < normPosition.length; i++)
+        {
+            Log.d("SetXY", "Position: " +normPosition[i]);
+        }
         if((x<position[0]+500 && x > position[0]-500) &&
            (y<position[1]+500 && y > position[1]-500))
         {
-            mbug1.setColor(1.0f, 0.0f, 1.0f, 1.0f);
+            mbug1.setColor(1.0f, 1.0f, 1.0f, 1.0f);
         }
         else
         {
