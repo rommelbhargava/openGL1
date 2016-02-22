@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">openGL1</string>
+    <string name="title_activity_main">The OpenGL App</string>
+</resources>
