@@ -3,8 +3,9 @@ package com.example.rommel.opengl1;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
-import android.os.SystemClock;
 import android.util.Log;
+
+import java.util.Vector;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -21,7 +22,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     private Square   mSquare;
 
     // mMVPMatrix is an abbreviation for "Model View Projection Matrix"
-    private final float[] mMVPMatrix = new float[16];
+    private final float[] mVPMatrix = new float[16];
     private final float[] mProjectionMatrix = new float[16];
     private final float[] mViewMatrix = new float[16];
 
@@ -67,38 +68,49 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         mbug3 = new Bug();
 
         mbug1.setColor(1.0f, 0.2f, 0.2f, 1.0f);
-        mbug1.spawn(1.0f, 10.0f, 1.0f, 0.0f, 1.0f);
+        mbug1.spawn(0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 
         mbug2.setColor(0.2f, 1.0f, 0.2f, 1.0f);
-        mbug2.spawn(500.0f, -0.0f, 0.0f, 10.0f, 0.5f);
+        mbug2.spawn(0.5f, 0.0f, 0.0f, 450f, 0.5f);
 
         mbug3.setColor(0.2f, 0.3f, 1.0f, 1.0f);
-        mbug3.spawn(-0.0f, 500.0f, 0.0f, 90.0f, 1.0f);
+        mbug3.spawn(1.0f, 0.5f, 0.0f, 90.0f, 1.0f);
     }
 
     public void onDrawFrame(GL10 unused) {
 
+
+        //Matrix.frustumM(mProjectionMatrix, 0, width, height, -1, 1, 1, 1000);
+        Matrix.orthoM(mProjectionMatrix, 0, -mRatio, mRatio, -1, 1, 0, 1000.0f);
+
         // Redraw background color
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
         // Set the camera position (View matrix)
-        Matrix.setLookAtM(mViewMatrix, 0, ScreenX, ScreenY, -zoom, ScreenX, ScreenY, 0f, 0f, 1.0f, 0.0f);
+        Matrix.setLookAtM(mViewMatrix, 0, 0, 0, 3.0f, 0, 0, 0f, 0f, 1.0f, 0.0f);
 
         // Calculate the projection and view transformation
-        Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
+        Matrix.multiplyMM(mVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
 
         // Draw shape
         //mSquare.draw();
-        mbug1.draw(mMVPMatrix);
-        mbug2.draw(mMVPMatrix);
-        mbug3.draw(mMVPMatrix);
+
+
+
+        mbug1.draw(mVPMatrix);
+        mbug2.draw(mVPMatrix);
+        mbug3.draw(mVPMatrix);
     }
 
+    private float mWidth;
+    private float mHeight;
+    private float mRatio;
     public void onSurfaceChanged(GL10 unused, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
 
-        float ratio = (float) width / height;
-        //Matrix.frustumM(mProjectionMatrix, 0, width, height, -1, 1, 1, 1000);
-        Matrix.orthoM(mProjectionMatrix, 0, 0, width, 0, height, 0, 1000.0f);
+        //getViewPortMatrix();
+        this.mWidth = width;
+        this.mHeight = height;
+        this.mRatio = this.mWidth / this.mHeight;
     }
 
     public static int loadShader(int type, String shaderCode){
@@ -120,37 +132,82 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     {
         this.mTouchX = x;
         this.mTouchY = y;
-        float[] position;
-        float[] normPosition = new float[4];
-        float[] modelMatrix = mbug1.getMatrix();
-        float[] modelMatrixI = new float[16];
-        float[] projectionMatrixI = new float[16];
-        Matrix.invertM(modelMatrixI, 0, modelMatrix, 0);
-        Matrix.invertM(projectionMatrixI, 0, mMVPMatrix, 0);
 
-        float[] mvpMatrix = new float[16];
-        float[] mvpMatrixI = new float[16];
+        float[] PositionVec = new float[4];
 
-        Matrix.multiplyMM(mvpMatrix, 0, modelMatrix, 0, mMVPMatrix, 0);
-        Matrix.invertM(mvpMatrixI, 0, mvpMatrix, 0);
+        float[] iVPMatrix = new float[16];
 
-        position = mbug1.getPosition();
-        //Matrix.transposeM(position, 0, position, 0);
+        float [] nPositionVec = new float[4];
 
-        Matrix.multiplyMV(normPosition, 0, mvpMatrixI, 0, position, 0);
-        for(int i = 0; i < normPosition.length; i++)
+        float[] tempPosition;
+
+        PositionVec[0] = mRatio*2*((x/mWidth) - 0.5f);
+        PositionVec[1] = -(2*((y/mHeight) - 0.5f));
+        PositionVec[2] = 0.0f;
+        PositionVec[3] = 0.0f;
+
+        Matrix.setIdentityM(iVPMatrix, 0);
+        Matrix.invertM(iVPMatrix, 0, mVPMatrix, 0);
+
+        Matrix.multiplyMV(nPositionVec, 0, iVPMatrix, 0, PositionVec, 0);
+
+        Log.d("Matrix:", "X:" + x + "Y:" + y);
+
+        for(int i = 0; i < nPositionVec.length/4; i++)
         {
-            Log.d("SetXY", "Position: " +normPosition[i]);
+            Log.d("Matrix:", "InvPos        : ["+nPositionVec[i*4 + 0]+" ,"+nPositionVec[i*4 + 1]+" ,"+nPositionVec[i*4 + 2]+" ,"+nPositionVec[i*4 + 3]+"]" );
         }
-        if((x<position[0]+500 && x > position[0]-500) &&
-           (y<position[1]+500 && y > position[1]-500))
+        for(int i = 0; i < PositionVec.length/4; i++)
+        {
+            Log.d("Matrix:", "Pos        : ["+PositionVec[i*4 + 0]+" ,"+PositionVec[i*4 + 1]+" ,"+PositionVec[i*4 + 2]+" ,"+PositionVec[i*4 + 3]+"]" );
+        }
+
+        tempPosition = mbug1.getPosition();
+
+        double dist = Math.sqrt((tempPosition[0]-PositionVec[0])*(tempPosition[0]-PositionVec[0]) +
+                                (tempPosition[1]-PositionVec[1])*(tempPosition[1]-PositionVec[1]));
+
+        if(dist < 0.1f)
         {
             mbug1.setColor(1.0f, 1.0f, 1.0f, 1.0f);
         }
         else
         {
-            mbug1.setColor(1.0f, 0.2f, 0.2f, 1.0f);
+            mbug1.setColor(1.0f, 0.0f, 0.0f, 1.0f);
         }
+        Log.d("Dist:", "Bug1 :"+dist);
+
+
+        tempPosition = mbug2.getPosition();
+
+        dist = Math.sqrt((tempPosition[0]-PositionVec[0])*(tempPosition[0]-PositionVec[0]) +
+                         (tempPosition[1]-PositionVec[1])*(tempPosition[1]-PositionVec[1]));
+
+        if(dist < 0.1f)
+        {
+            mbug2.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+        else
+        {
+            mbug2.setColor(0.0f, 1.0f, 0.0f, 1.0f);
+        }
+
+        Log.d("Dist:", "Bug1 :"+dist);
+
+        tempPosition = mbug3.getPosition();
+
+        dist = Math.sqrt((tempPosition[0] - PositionVec[0]) * (tempPosition[0] - PositionVec[0]) +
+                (tempPosition[1] - PositionVec[1])*(tempPosition[1]-PositionVec[1]));
+
+        if(dist < 0.5f)
+        {
+            mbug3.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+        else
+        {
+            mbug3.setColor(0.0f, 0.0f, 1.0f, 1.0f);
+        }
+        Log.d("Dist:", "Bug1 :"+dist);
 
     }
 
